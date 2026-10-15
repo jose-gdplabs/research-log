@@ -1,0 +1,35 @@
+# Secrets: real env files never go to git; .env.example is the template
+.env
+.env.*
+!.env.example
+
+# Credentials / keys
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.token
+credentials
+credentials.json
+secrets.*
+*.secret
+
+# Data produced by running the stack locally
+*.log
+*.wal
+loki-data/
+seaweedfs-data/
+grafana-data/
+otelcol-queue/
+data/
+
+# Local scratch / OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+.claude/

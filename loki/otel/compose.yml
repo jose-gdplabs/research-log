@@ -1,0 +1,32 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.127.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    restart: unless-stopped
+    environment:
+      OTLP_TOKEN: ${OTLP_TOKEN:?set OTLP_TOKEN in otel/.env}
+    # root so the persistent sending queue can write to the named volume
+    user: "0:0"
+    volumes:
+      - ./otel-collector.yaml:/etc/otelcol/config.yaml:ro
+      - otelcol-queue:/var/lib/otelcol/file_storage
+    ports:
+      - "${OTLP_BIND:-0.0.0.0}:4317:4317"   # OTLP gRPC  (restrict with firewall to app server IPs)
+      - "${OTLP_BIND:-0.0.0.0}:4318:4318"   # OTLP HTTP
+    depends_on:
+      loki:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    logging: *default-logging
+
+volumes:
+  otelcol-queue:

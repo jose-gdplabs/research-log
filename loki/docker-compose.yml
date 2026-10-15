@@ -1,0 +1,10 @@
+# Centralized logging: apps (OTel SDK) -> otel -> loki (-> seaweedfs) -> grafana
+# Each component has its own folder with compose.yml + .env + config.
+# Fill in every */.env first, then from this folder: docker compose up -d
+# Needs Docker Compose >= 2.23 (include + configs with inline content).
+
+include:
+  - seaweedfs/compose.yml   # drop this line if loki/.env LOKI_CONFIG is loki-filesystem.yaml or loki-s3.yaml
+  - loki/compose.yml
+  - otel/compose.yml
+  - grafana/compose.yml

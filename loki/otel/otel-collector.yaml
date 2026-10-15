@@ -1,0 +1,56 @@
+# Apps send OTLP here (with "Authorization: Bearer <OTLP_TOKEN>"); collector forwards to Loki.
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+  bearertokenauth:
+    scheme: Bearer
+    token: ${env:OTLP_TOKEN}
+  file_storage:
+    directory: /var/lib/otelcol/file_storage   # persistent queue survives restarts / Loki downtime
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+        auth:
+          authenticator: bearertokenauth
+        max_recv_msg_size_mib: 8
+      http:
+        endpoint: 0.0.0.0:4318
+        auth:
+          authenticator: bearertokenauth
+
+processors:
+  memory_limiter:            # must be first: refuse data instead of OOM
+    check_interval: 1s
+    limit_percentage: 75
+    spike_limit_percentage: 20
+  batch:
+    send_batch_size: 1024
+    timeout: 5s
+
+exporters:
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+    timeout: 30s
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 60s
+      max_elapsed_time: 30m
+    sending_queue:
+      enabled: true
+      storage: file_storage
+      queue_size: 5000
+
+service:
+  extensions: [health_check, bearertokenauth, file_storage]
+  telemetry:
+    logs:
+      level: warn
+  pipelines:
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/loki]

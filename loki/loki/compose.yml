@@ -1,0 +1,41 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  loki:
+    image: grafana/loki:3.5.0
+    command: ["-config.file=/etc/loki/loki.yaml", "-config.expand-env=true"]
+    restart: unless-stopped
+    environment:
+      LOKI_S3_REGION: ${LOKI_S3_REGION:-}
+      LOKI_S3_BUCKET: ${LOKI_S3_BUCKET:-}
+      LOKI_S3_ACCESS_KEY_ID: ${LOKI_S3_ACCESS_KEY_ID:-}
+      LOKI_S3_SECRET_ACCESS_KEY: ${LOKI_S3_SECRET_ACCESS_KEY:-}
+    volumes:
+      # loki-seaweedfs.yaml | loki-filesystem.yaml | loki-s3.yaml, chosen via LOKI_CONFIG in .env
+      - ./${LOKI_CONFIG:-loki-seaweedfs.yaml}:/etc/loki/loki.yaml:ro
+      - loki-data:/loki
+    # Not published to the host: only reachable by otel/grafana on the internal network.
+    expose:
+      - "3100"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3100/ready || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    depends_on:
+      seaweedfs-init:
+        condition: service_completed_successfully
+        required: false   # not present when seaweedfs is not included
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+    logging: *default-logging
+
+volumes:
+  loki-data:
