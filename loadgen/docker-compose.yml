@@ -1,0 +1,19 @@
+services:
+  loadgen:
+    build: .
+    env_file: .env
+    restart: unless-stopped
+    ports:
+      - "${LOADGEN_BIND:-127.0.0.1}:3000:3000"
+    # Reach the collector published on this host (loki/otel, port 4318). On Linux this needs host-gateway.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
